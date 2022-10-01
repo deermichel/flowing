@@ -1,0 +1,15 @@
+[package]
+name = "flowing"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Micha Hanselmann <micha.hanselmann@gmail.com>"]
+repository = "https://github.com/deermichel/flowing"
+homepage = "https://github.com/deermichel/flowing"
+documentation = "https://docs.rs/flowing"
+readme = "README.md"
+description = "Rusty flow graph processing library"
+keywords = ["graph", "flowgraph", "dataflow-programming", "dsp", "data-processing"]
+categories = ["algorithms", "data-structures"]
+
+[dependencies]
