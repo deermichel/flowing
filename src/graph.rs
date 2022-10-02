@@ -133,7 +133,7 @@ impl<N: Node> Graph<N> {
     }
 
     /// Returns iterator over nodes.
-    pub fn iter_nodes(&mut self) -> impl Iterator<Item=(&NodeId, &N)> {
+    pub fn iter_nodes(&self) -> impl Iterator<Item=(&NodeId, &N)> {
         self.nodes.iter()
     }
 
