@@ -132,6 +132,16 @@ impl<N: Node> Graph<N> {
         self.nodes.get_mut(&id).ok_or(GraphError::NodeNotExists(id))
     }
 
+    /// Returns iterator over nodes.
+    pub fn iter_nodes(&mut self) -> impl Iterator<Item=(&NodeId, &N)> {
+        self.nodes.iter()
+    }
+
+    /// Returns mutable iterator over nodes.
+    pub fn iter_nodes_mut(&mut self) -> impl Iterator<Item=(&NodeId, &mut N)> {
+        self.nodes.iter_mut()
+    }
+
     /// Processes nodes in graph.
     pub fn process(&mut self) {
         for &node in self.processing_order.iter() {
@@ -296,8 +306,21 @@ mod tests {
     fn get_node() {
         let mut graph: Graph<Box<dyn Node>> = Graph::new();
         assert_eq!(graph.get_node(NodeId(0)).err(), Some(GraphError::NodeNotExists(NodeId(0))));
+        assert_eq!(graph.get_node_mut(NodeId(0)).err(), Some(GraphError::NodeNotExists(NodeId(0))));
         graph.add_node(Box::from(nodes::Variable::new(1.0)));
         assert_eq!(graph.get_node(NodeId(0)).map(|n| n.get_output(OutputId(0))), Ok(1.0));
+        assert_eq!(graph.get_node_mut(NodeId(0)).map(|n| n.get_output(OutputId(0))), Ok(1.0));
+    }
+
+    #[test]
+    fn iter_node() {
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
+        let var0 = graph.add_node(Box::from(nodes::Variable::new(1.0)));
+        let var1 = graph.add_node(Box::from(nodes::Variable::new(2.0)));
+        let var2 = graph.add_node(Box::from(nodes::Variable::new(3.0)));
+        assert!(graph.iter_nodes().find(|(&id, _)| id == var0).is_some());
+        assert!(graph.iter_nodes().find(|(&id, _)| id == var1).is_some());
+        assert!(graph.iter_nodes_mut().find(|(&id, _)| id == var2).is_some());
     }
 
     #[test]
