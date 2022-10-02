@@ -30,3 +30,23 @@ pub trait Node {
     /// Sets input value.
     fn set_input(&mut self, id: InputId, value: f64);
 }
+impl<N: Node + ?Sized> Node for Box<N> {
+    fn delayed_processing(&self) -> bool {
+        self.as_ref().delayed_processing()
+    }
+    fn get_output(&self, id: OutputId) -> f64 {
+        self.as_ref().get_output(id)
+    }
+    fn list_inputs(&self) -> &[InputId] {
+        self.as_ref().list_inputs()
+    }
+    fn list_outputs(&self) -> &[OutputId] {
+        self.as_ref().list_outputs()
+    }
+    fn process(&mut self) {
+        self.as_mut().process()
+    }
+    fn set_input(&mut self, id: InputId, value: f64) {
+        self.as_mut().set_input(id, value)
+    }
+}
