@@ -5,7 +5,7 @@ use std::{
 };
 
 /// Processing graph consisting of nodes and connections.
-pub struct Graph {
+pub struct Graph<N: Node> {
     /// Connections in graph.
     connections: Vec<Connection>,
 
@@ -13,12 +13,12 @@ pub struct Graph {
     next_node_id: NodeId,
 
     /// Nodes in graph, indexed by unique id.
-    nodes: HashMap<NodeId, Box<dyn Node>>,
+    nodes: HashMap<NodeId, N>,
 
     /// Node processing order (result of topologial sort).
     processing_order: LinkedList<NodeId>,
 }
-impl Graph {
+impl<N: Node> Graph<N> {
     /// Creates new empty graph.
     pub fn new() -> Self {
         Graph {
@@ -58,7 +58,7 @@ impl Graph {
     }
 
     /// Adds a node to the graph.
-    pub fn add_node(&mut self, node: Box<dyn Node>) -> NodeId {
+    pub fn add_node(&mut self, node: N) -> NodeId {
         let id = self.next_node_id;
         self.nodes.insert(id, node);
         self.processing_order = self.calc_processing_order().unwrap();
@@ -123,8 +123,23 @@ impl Graph {
     }
 
     /// Returns a node by id.
-    pub fn get_node(&self, id: NodeId) -> Result<&Box<dyn Node>, GraphError> {
+    pub fn get_node(&self, id: NodeId) -> Result<&N, GraphError> {
         self.nodes.get(&id).ok_or(GraphError::NodeNotExists(id))
+    }
+
+    /// Returns a mutable node by id.
+    pub fn get_node_mut(&mut self, id: NodeId) -> Result<&mut N, GraphError> {
+        self.nodes.get_mut(&id).ok_or(GraphError::NodeNotExists(id))
+    }
+
+    /// Returns iterator over nodes.
+    pub fn iter_nodes(&self) -> impl Iterator<Item=(&NodeId, &N)> {
+        self.nodes.iter()
+    }
+
+    /// Returns mutable iterator over nodes.
+    pub fn iter_nodes_mut(&mut self) -> impl Iterator<Item=(&NodeId, &mut N)> {
+        self.nodes.iter_mut()
     }
 
     /// Processes nodes in graph.
@@ -155,7 +170,7 @@ impl Graph {
     }
 
     /// Removes a node by id.
-    pub fn remove_node(&mut self, id: NodeId) -> Result<Box<dyn Node>, GraphError> {
+    pub fn remove_node(&mut self, id: NodeId) -> Result<N, GraphError> {
         let node = self.nodes.remove(&id).ok_or(GraphError::NodeNotExists(id))?;
         self.connections = self.connections.iter().cloned().filter(|&c| self.validate_connection(c).is_ok()).collect();
         self.processing_order = self.calc_processing_order().unwrap();
@@ -213,7 +228,7 @@ mod tests {
 
     #[test]
     fn add_connection() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
         let node0 = graph.add_node(Box::from(nodes::Variable::new(1.0)));
         let node1 = graph.add_node(Box::from(nodes::Variable::new(2.0)));
         assert_eq!(graph.connections.len(), 0);
@@ -247,7 +262,7 @@ mod tests {
 
     #[test]
     fn add_node() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
         assert_eq!(graph.nodes.len(), 0);
 
         let node0 = graph.add_node(Box::from(nodes::Variable::new(1.0)));
@@ -261,7 +276,7 @@ mod tests {
 
     #[test]
     fn processing_order() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
         let var0 = graph.add_node(Box::from(nodes::Variable::new(1.0)));
         let var1 = graph.add_node(Box::from(nodes::Variable::new(2.0)));
         graph.add_connection(Connection::new(var0, OutputId(0), var1, InputId(0))).unwrap();
@@ -289,15 +304,28 @@ mod tests {
 
     #[test]
     fn get_node() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
         assert_eq!(graph.get_node(NodeId(0)).err(), Some(GraphError::NodeNotExists(NodeId(0))));
+        assert_eq!(graph.get_node_mut(NodeId(0)).err(), Some(GraphError::NodeNotExists(NodeId(0))));
         graph.add_node(Box::from(nodes::Variable::new(1.0)));
         assert_eq!(graph.get_node(NodeId(0)).map(|n| n.get_output(OutputId(0))), Ok(1.0));
+        assert_eq!(graph.get_node_mut(NodeId(0)).map(|n| n.get_output(OutputId(0))), Ok(1.0));
+    }
+
+    #[test]
+    fn iter_node() {
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
+        let var0 = graph.add_node(Box::from(nodes::Variable::new(1.0)));
+        let var1 = graph.add_node(Box::from(nodes::Variable::new(2.0)));
+        let var2 = graph.add_node(Box::from(nodes::Variable::new(3.0)));
+        assert!(graph.iter_nodes().find(|(&id, _)| id == var0).is_some());
+        assert!(graph.iter_nodes().find(|(&id, _)| id == var1).is_some());
+        assert!(graph.iter_nodes_mut().find(|(&id, _)| id == var2).is_some());
     }
 
     #[test]
     fn process() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
         let var0 = graph.add_node(Box::from(nodes::Variable::new(1.0)));
         let add1 = graph.add_node(Box::from(nodes::Addition::new()));
         let del2 = graph.add_node(Box::from(nodes::Delay::new()));
@@ -317,7 +345,7 @@ mod tests {
 
     #[test]
     fn remove_connection() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
         let node0 = graph.add_node(Box::from(nodes::Variable::new(1.0)));
         let node1 = graph.add_node(Box::from(nodes::Variable::new(2.0)));
         let node2 = graph.add_node(Box::from(nodes::Variable::new(3.0)));
@@ -335,7 +363,7 @@ mod tests {
 
     #[test]
     fn remove_node() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<Box<dyn Node>> = Graph::new();
         let node0 = graph.add_node(Box::from(nodes::Variable::new(1.0)));
         let node1 = graph.add_node(Box::from(nodes::Variable::new(2.0)));
         let node2 = graph.add_node(Box::from(nodes::Variable::new(3.0)));
