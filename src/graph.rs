@@ -144,6 +144,7 @@ impl<N: Node> Graph<N> {
 
     /// Processes nodes in graph.
     pub fn process(&mut self) {
+        // First pass.
         for &node in self.processing_order.iter() {
             // Populate inputs.
             for connection in self.connections.iter() {
@@ -153,8 +154,20 @@ impl<N: Node> Graph<N> {
                 }
             }
 
-            // Process.
-            self.nodes.get_mut(&node).unwrap().process();
+            // Process non-delayed nodes.
+            let node = self.nodes.get_mut(&node).unwrap();
+            if !node.delayed_processing() {
+                node.process();
+            }
+        }
+
+        // Second pass.
+        for &node in self.processing_order.iter() {
+            // Process delayed nodes.
+            let node = self.nodes.get_mut(&node).unwrap();
+            if node.delayed_processing() {
+                node.process();
+            }
         }
     }
 
